@@ -15,6 +15,13 @@ module.exports = function (config) {
     client: {
       clearContext: false // leave Jasmine Spec Runner output visible in browser
     },
+    // Specs use TranslateHttpLoader, which requests ./assets/i18n/en.json.
+    // Karma serves the build output (including assets) under /_karma_webpack_/,
+    // so without this proxy the request 404s and the error surfaces at random
+    // as "An error was thrown in afterAll".
+    proxies: {
+      '/assets/': '/_karma_webpack_/assets/'
+    },
     coverageIstanbulReporter: {
       dir: require('path').join(__dirname, '../coverage'),
       reports: ['html', 'lcovonly'],
