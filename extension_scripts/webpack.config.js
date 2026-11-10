@@ -27,6 +27,13 @@ module.exports = {
   },
   resolve: {
     modules: ['node_modules', path.resolve(__dirname, 'app')],
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    alias: {
+      // bitcore-message requires bitcore-lib@^0.13, so `npm install` can place
+      // a second copy under node_modules/bitcore-message/node_modules.
+      // bitcore-lib v8 throws when loaded twice, which stops the service
+      // worker from starting. Pin every import to the top-level copy.
+      'bitcore-lib': path.resolve(__dirname, '../node_modules/bitcore-lib')
+    }
   }
 };
