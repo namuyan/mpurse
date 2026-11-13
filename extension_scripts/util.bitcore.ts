@@ -171,7 +171,7 @@ export class BitcoreUtil {
     passphrase: string
   ): BitCore.PrivateKey {
     const code = new BitCoreMnemonic(passphrase);
-    return code.toHDPrivateKey();
+    return code.toHDPrivateKey('', this.NETWORK);
   }
 
   static getPrivateKey(
