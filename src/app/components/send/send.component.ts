@@ -11,6 +11,7 @@ import { filter, flatMap, map, tap, concatMap, reduce } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { MatSnackBar } from '@angular/material';
 import { Decimal } from 'decimal.js';
+import { findMaxSendAmount } from './max-send';
 import { TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -256,7 +257,40 @@ export class SendComponent implements OnInit {
   }
 
   setAvailableAllFunds(): void {
-    this.amountControl.setValue(this.getAvailable(this.assetControl.value));
+    const asset = this.assetControl.value;
+    if (asset !== 'MONA') {
+      this.amountControl.setValue(this.getAvailable(asset));
+      return;
+    }
+
+    // The fee is paid from the same MONA balance, so sending the whole
+    // balance as the amount can never be built. Find the largest amount
+    // that leaves room for the fee.
+    const balanceSat = new Decimal(this.getAvailable('MONA'))
+      .times(new Decimal(100000000))
+      .toNumber();
+    findMaxSendAmount(balanceSat, Number(this.feeControl.value), amountSat =>
+      this.createSendObservable(true, {
+        amount: amountSat,
+        destination: this.toControl.value || this.fromControl.value
+      })
+        .toPromise()
+        .then(result => result.btc_fee)
+    )
+      .then(maxSat =>
+        this.zone.run(() =>
+          this.amountControl.setValue(
+            new Decimal(maxSat).div(new Decimal(100000000)).toFixed(8)
+          )
+        )
+      )
+      .catch(error =>
+        this.zone.run(() => {
+          this.snackBar.open(this.backgroundService.interpretError(error), '', {
+            duration: 3000
+          });
+        })
+      );
   }
 
   feeChange(event: any): void {
@@ -278,11 +312,16 @@ export class SendComponent implements OnInit {
     return fee <= monaAvailable;
   }
 
-  createSendObservable(disableUtxoLocks: boolean): Observable<any> {
+  createSendObservable(
+    disableUtxoLocks: boolean,
+    override?: { amount: number; destination: string }
+  ): Observable<any> {
     return this.backgroundService.getAsset(this.assetControl.value).pipe(
       flatMap(assetInfo => {
         let amount: number;
-        if (assetInfo['divisible']) {
+        if (override) {
+          amount = override.amount;
+        } else if (assetInfo['divisible']) {
           amount = new Decimal(this.amountControl.value)
             .times(new Decimal(100000000))
             .toNumber();
@@ -291,7 +330,7 @@ export class SendComponent implements OnInit {
         }
         return this.backgroundService.createSend(
           this.fromControl.value,
-          this.toControl.value,
+          override ? override.destination : this.toControl.value,
           this.assetControl.value,
           amount,
           this.memoTypeControl.value === 'no'
