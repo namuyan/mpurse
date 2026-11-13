@@ -117,10 +117,10 @@ class Background {
                 connectedPort.onDisconnect.addListener(
                   (initPort: chrome.runtime.Port) => {
                     this.connectedPorts = this.connectedPorts.filter(
-                      cp => cp.port.sender.id !== initPort.sender.id
+                      cp => cp.port !== initPort
                     );
                     this.requests = this.requests.filter(
-                      r => r.port.sender.id !== initPort.sender.id
+                      r => r.port !== initPort
                     );
 
                     this.setBadgeText(false);
