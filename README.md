@@ -138,9 +138,9 @@ const txHash = await window.mpurse.sendRawTransaction(tx);
 
 Mpchain API.
 
-Valid methods are `address`, `asset` , `balance` , `balances` , `bets` , `block` , `broadcasts` , `btcpays` , `burns` , `dividends` , `history` , `holders` , `issuances` , `market` , `markets` , `market_history` , `market_orderbook` , `market_orders` , `mempool` , `network` , `orders` , `order_matches` , `sends` , `send_tx` and `tx`.
+Valid methods are `address`, `asset`, `balance`, `balances`, `mempool` and `send_tx`.
 
-For details, see the [document](https://mpchain.info/doc).
+Mpurse no longer uses the mpchain.info REST API. These methods are answered from the Monaparty counterblock API, and the results contain the same main fields as before (for example `mona_balance`, `quantity`, `divisible`). USD estimates (`estimated_value`) and the market / history / block related methods are not available any more; use `counterBlock()` or `counterParty()` for those.
 - Parameters
   - **method**: string
   - **params**: {  
@@ -166,7 +166,7 @@ const balance = await window.mpurse.mpchain('balances', mpchainParams);
 
 #### counterBlock()
 
-Counterblock API. (via https://mpchain.info/api/cb)
+Counterblock API. (via https://monapa.electrum-mona.org/_api)
 
 - Parameters
   - **method**: string
@@ -182,7 +182,7 @@ const assets = await window.mpurse.counterBlock('get_assets_info', cbParams);
 
 #### counterParty()
 
-Counterparty API. (via https://mpchain.info/api/cb)
+Counterparty API. (via https://monapa.electrum-mona.org/_api)
 
 - Parameters
   - **method**: string
