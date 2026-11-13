@@ -12,6 +12,7 @@ import { Observable } from 'rxjs';
 import { MatSnackBar } from '@angular/material';
 import { Decimal } from 'decimal.js';
 import { findMaxSendAmount } from './max-send';
+import { isAmountWithin, isFeeCovered } from './amount';
 import { TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -298,18 +299,23 @@ export class SendComponent implements OnInit {
   }
 
   isAssetAvailable(): boolean {
-    return (
-      this.amountControl.value <= this.getAvailable(this.assetControl.value)
+    return isAmountWithin(
+      this.amountControl.value,
+      this.getAvailable(this.assetControl.value)
     );
   }
 
+  // Uses the fee of the built transaction (calculatedFee, in satoshi), not
+  // the fee rate in feeControl. False until a transaction has been built.
   isFeeAvailable(): boolean {
-    let monaAvailable = Number(this.getAvailable('MONA'));
-    const fee = new Decimal(this.feeControl.value).div(100000000).toNumber();
-    if (this.assetControl.value === 'MONA') {
-      monaAvailable -= Number(this.amountControl.value);
+    if (!this.unsignedTx) {
+      return false;
     }
-    return fee <= monaAvailable;
+    return isFeeCovered(
+      this.calculatedFee,
+      this.getAvailable('MONA'),
+      this.assetControl.value === 'MONA' ? this.amountControl.value : 0
+    );
   }
 
   createSendObservable(
