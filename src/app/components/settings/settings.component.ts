@@ -65,7 +65,9 @@ export class SettingsComponent implements OnInit {
         }),
       error: error =>
         this.zone.run(() =>
-          this.snackBar.open(error.toString(), '', { duration: 3000 })
+          this.snackBar.open(this.backgroundService.interpretError(error), '', {
+            duration: 3000
+          })
         )
     });
   }
@@ -84,7 +86,11 @@ export class SettingsComponent implements OnInit {
           ),
         error: error =>
           this.zone.run(() =>
-            this.snackBar.open(error.toString(), '', { duration: 3000 })
+            this.snackBar.open(
+              this.backgroundService.interpretError(error),
+              '',
+              { duration: 3000 }
+            )
           )
       });
   }
@@ -94,7 +100,9 @@ export class SettingsComponent implements OnInit {
       next: () => this.zone.run(() => this.router.navigate(['/term'])),
       error: error =>
         this.zone.run(() =>
-          this.snackBar.open(error.toString(), '', { duration: 3000 })
+          this.snackBar.open(this.backgroundService.interpretError(error), '', {
+            duration: 3000
+          })
         )
     });
   }

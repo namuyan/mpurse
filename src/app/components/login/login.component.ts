@@ -26,7 +26,9 @@ export class LoginComponent {
       error: error => {
         this.zone.run(() => {
           this.passwordControl.setValue('');
-          this.snackBar.open(error.toString(), '', { duration: 3000 });
+          this.snackBar.open(this.backgroundService.interpretError(error), '', {
+            duration: 3000
+          });
         });
       }
     });

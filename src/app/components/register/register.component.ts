@@ -71,7 +71,9 @@ export class RegisterComponent {
       next: () => this.zone.run(() => this.router.navigate(['/generate'])),
       error: error =>
         this.zone.run(() =>
-          this.snackBar.open(error.toString(), '', { duration: 3000 })
+          this.snackBar.open(this.backgroundService.interpretError(error), '', {
+            duration: 3000
+          })
         )
     });
   }

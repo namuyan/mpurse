@@ -130,7 +130,11 @@ export class GenerateComponent implements OnInit {
         next: () => this.zone.run(() => this.router.navigate(['/home'])),
         error: error => {
           this.zone.run(() => {
-            this.snackBar.open(error.toString(), '', { duration: 3000 });
+            this.snackBar.open(
+              this.backgroundService.interpretError(error),
+              '',
+              { duration: 3000 }
+            );
             this.router.navigate(['/term']);
           });
         }

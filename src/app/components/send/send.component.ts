@@ -219,7 +219,11 @@ export class SendComponent implements OnInit {
         next: assets => this.zone.run(() => (this.assets = assets)),
         error: error => {
           this.zone.run(() => {
-            this.snackBar.open(error.toString(), '', { duration: 3000 });
+            this.snackBar.open(
+              this.backgroundService.interpretError(error),
+              '',
+              { duration: 3000 }
+            );
           });
         }
       });
@@ -387,7 +391,11 @@ export class SendComponent implements OnInit {
           next: () => this.backgroundService.closeWindow(),
           error: error =>
             this.zone.run(() =>
-              this.snackBar.open(error.toString(), '', { duration: 3000 })
+              this.snackBar.open(
+                this.backgroundService.interpretError(error),
+                '',
+                { duration: 3000 }
+              )
             )
         });
     } else {
@@ -425,7 +433,11 @@ export class SendComponent implements OnInit {
           next: () => this.backgroundService.closeWindow(),
           error: error =>
             this.zone.run(() =>
-              this.snackBar.open(error.toString(), '', { duration: 3000 })
+              this.snackBar.open(
+                this.backgroundService.interpretError(error),
+                '',
+                { duration: 3000 }
+              )
             )
         });
     } else {

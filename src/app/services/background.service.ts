@@ -379,6 +379,13 @@ export class BackgroundService {
   interpretError(error: any): string {
     let errorMessage = '';
 
+    if (error === null || error === undefined) {
+      return 'Unknown error';
+    }
+    if (error instanceof Error) {
+      return error.message || error.toString();
+    }
+
     if (this.isObject(error) && 'error' in error) {
       if (this.isObject(error.error) && 'data' in error.error) {
         if (this.isObject(error.error.data) && 'message' in error.error.data) {
@@ -417,7 +424,18 @@ export class BackgroundService {
       errorMessage = error;
     }
 
-    return errorMessage;
+    // always hand a string to the snack bar, never "[object Object]"
+    if (this.isObject(errorMessage) || Array.isArray(errorMessage)) {
+      return JSON.stringify(errorMessage);
+    }
+    if (
+      errorMessage === undefined ||
+      errorMessage === null ||
+      errorMessage === ''
+    ) {
+      return 'Unknown error';
+    }
+    return String(errorMessage);
   }
 
   private isObject(obj: any): boolean {

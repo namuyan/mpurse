@@ -88,7 +88,11 @@ export class DetailsComponent implements OnInit {
         error: error => {
           this.zone.run(() => {
             this.nameControl.setValue(this.name);
-            this.snackBar.open(error.toString(), '', { duration: 3000 });
+            this.snackBar.open(
+              this.backgroundService.interpretError(error),
+              '',
+              { duration: 3000 }
+            );
           });
         }
       });

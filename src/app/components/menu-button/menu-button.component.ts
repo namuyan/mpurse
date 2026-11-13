@@ -95,7 +95,9 @@ export class MenuButtonComponent implements OnInit, OnDestroy {
     this.backgroundService.changeAddress(address).subscribe({
       next: () => this.zone.run(() => this.router.navigate(['/home'])),
       error: error =>
-        this.snackBar.open(error.toString(), '', { duration: 3000 })
+        this.snackBar.open(this.backgroundService.interpretError(error), '', {
+          duration: 3000
+        })
     });
   }
 
@@ -103,7 +105,9 @@ export class MenuButtonComponent implements OnInit, OnDestroy {
     this.backgroundService.lock().subscribe({
       next: () => this.zone.run(() => this.router.navigate(['/login'])),
       error: error =>
-        this.snackBar.open(error.toString(), '', { duration: 3000 })
+        this.snackBar.open(this.backgroundService.interpretError(error), '', {
+          duration: 3000
+        })
     });
   }
 }

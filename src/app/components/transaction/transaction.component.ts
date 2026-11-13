@@ -130,7 +130,11 @@ export class TransactionComponent implements OnInit {
             next: () => this.backgroundService.closeWindow(),
             error: error =>
               this.zone.run(() =>
-                this.snackBar.open(error.toString(), '', { duration: 3000 })
+                this.snackBar.open(
+                  this.backgroundService.interpretError(error),
+                  '',
+                  { duration: 3000 }
+                )
               )
           });
       }
@@ -142,7 +146,11 @@ export class TransactionComponent implements OnInit {
             this.zone.run(() => this.signedControl.setValue(signedTx)),
           error: error =>
             this.zone.run(() =>
-              this.snackBar.open(error.toString(), '', { duration: 3000 })
+              this.snackBar.open(
+                this.backgroundService.interpretError(error),
+                '',
+                { duration: 3000 }
+              )
             )
         });
     }
@@ -156,7 +164,11 @@ export class TransactionComponent implements OnInit {
           next: () => this.backgroundService.closeWindow(),
           error: error =>
             this.zone.run(() =>
-              this.snackBar.open(error.toString(), '', { duration: 3000 })
+              this.snackBar.open(
+                this.backgroundService.interpretError(error),
+                '',
+                { duration: 3000 }
+              )
             )
         });
     } else {
