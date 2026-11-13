@@ -32,7 +32,11 @@ class Mpurse {
     handler: any
   ): any {
     const listener = (event: MessageEvent): void => {
-      if (event.data.action === messageType && event.data.id === id) {
+      if (
+        event.data &&
+        event.data.action === messageType &&
+        event.data.id === id
+      ) {
         if (remove) {
           window.removeEventListener('message', listener);
         }

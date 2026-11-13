@@ -88,35 +88,42 @@ class ContentScript {
 
   assignEventHandlers(): void {
     window.addEventListener('message', async (event: MessageEvent) => {
-      if (event.origin === window.location.origin && event.data.action) {
-        try {
-          if (!this.isAlive) {
-            this.reconnect(true);
-          }
-          if (
-            this.getRequestType(event.data.action) ===
-            ContentScriptMessage.InPageInit
-          ) {
-            this.hasInit = true;
-          }
-          this.port.postMessage({
-            type: this.getRequestType(event.data.action),
-            id: event.data.id,
-            origin: event.origin,
-            data: event.data.message
-          });
-        } catch (e) {
-          window.postMessage(
-            {
-              action: this.getResponseAction(
-                this.getRequestType(event.data.action)
-              ),
-              id: event.data.id,
-              data: { error: 'Extension context invalidated' }
-            },
-            '*'
-          );
+      // Only requests that this page's own window posted: not messages from
+      // other frames or windows, and not the responses this script posts.
+      if (
+        event.source !== window ||
+        event.origin !== window.location.origin ||
+        !event.data ||
+        !event.data.action
+      ) {
+        return;
+      }
+      const type = this.getRequestType(event.data.action);
+      if (!type) {
+        return;
+      }
+      try {
+        if (!this.isAlive) {
+          this.reconnect(true);
         }
+        if (type === ContentScriptMessage.InPageInit) {
+          this.hasInit = true;
+        }
+        this.port.postMessage({
+          type: type,
+          id: event.data.id,
+          origin: event.origin,
+          data: event.data.message
+        });
+      } catch (e) {
+        window.postMessage(
+          {
+            action: this.getResponseAction(type),
+            id: event.data.id,
+            data: { error: 'Extension context invalidated' }
+          },
+          '*'
+        );
       }
     });
     document.addEventListener('visibilitychange', () => {
