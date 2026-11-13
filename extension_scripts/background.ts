@@ -5,6 +5,7 @@ import { EncryptUtil } from './util.encrypt';
 import { MpchainUtil } from './util.mpchain';
 import { Hdkey, Keyring } from './keyring';
 import { ExtensionMessage } from './enum/extensionMessage';
+import { isExtensionPage } from './util.sender';
 
 interface VaultData {
   hdkey: {
@@ -450,6 +451,13 @@ class Background {
     };
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (
+        !isExtensionPage(sender, chrome.runtime.id, chrome.runtime.getURL(''))
+      ) {
+        // only the popup and request windows may use these handlers
+        sendResponse({ success: false, error: 'Not allowed' });
+        return false;
+      }
       this.ready.then(() => {
         // Messages from the extension's own pages are user activity.
         this.checkAutoLock();
