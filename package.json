@@ -11,7 +11,8 @@
     "e2e": "ng e2e",
     "webpack": "webpack --config ./extension_scripts/webpack.config.js",
     "webpack-watch": "webpack --progress --watch --config ./extension_scripts/webpack.config.js",
-    "build-all": "run-s build webpack"
+    "build-all": "run-s build webpack",
+    "build-firefox": "node tools/build-firefox.js"
   },
   "private": true,
   "husky": {

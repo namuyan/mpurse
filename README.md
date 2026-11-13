@@ -195,3 +195,15 @@ Counterparty API. (via https://monapa.electrum-mona.org/_api)
 const cpParams = {address: 'MLinW5mA2Rnu7EjDQpnsrh6Z8APMBH6rAt'};
 const unspentTxouts = await window.mpurse.counterParty('get_unspent_txouts', cpParams);
 ```
+
+## Build
+
+```
+npm ci
+npm run build-all        # Chrome / Edge: dist/mpurse
+npm run build-firefox    # Firefox: dist/mpurse-firefox (run build-all first)
+```
+
+Firefox 115 or later is required. Firefox runs the background script as an event page (`background.scripts`) instead of a service worker, so `npm run build-firefox` converts the manifest of the Chrome build. To try it, open `about:debugging#/runtime/this-firefox` and use "Load Temporary Add-on" with `dist/mpurse-firefox/manifest.json`. In Firefox the host permission is not granted automatically: allow "Access your data for all websites" for Mpurse in `about:addons` (Permissions tab), otherwise the wallet cannot connect to web pages.
+
+To sign the package for addons.mozilla.org, set `MPURSE_GECKO_ID` to the id of the existing listing before running `npm run build-firefox`.
