@@ -3,6 +3,8 @@ import { InPageMessage } from './enum/inPageMessage';
 
 class ContentScript {
   private isAlive = false;
+  private hasInit = false;
+  private lastReconnectAt = 0;
   private port: chrome.runtime.Port;
 
   constructor() {
@@ -28,34 +30,75 @@ class ContentScript {
     });
 
     this.port.onDisconnect.addListener(() => {
+      // read lastError so the browser does not log it as unchecked
+      void chrome.runtime.lastError;
       this.isAlive = false;
-      window.postMessage(
-        {
-          action: InPageMessage.LoginState,
-          id: 0,
-          data: { isUnlocked: false }
-        },
-        '*'
-      );
-      window.postMessage(
-        {
-          action: InPageMessage.AddressState,
-          id: 0,
-          data: { address: '' }
-        },
-        '*'
-      );
+      // The browser stops the background service worker after a short idle time,
+      // which closes this port. The extension is still installed, so reconnect
+      // instead of telling the page that the wallet is locked. Hidden tabs
+      // reconnect when they become visible again.
+      if (this.hasInit && !document.hidden) {
+        this.reconnect(false);
+      }
     });
+  }
+
+  reconnect(force: boolean): void {
+    const now = Date.now();
+    if (!force && now - this.lastReconnectAt < 5000) {
+      return;
+    }
+    this.lastReconnectAt = now;
+    try {
+      this.connectPort();
+      if (this.hasInit) {
+        // register this port again and ask for the current state
+        this.port.postMessage({
+          type: ContentScriptMessage.InPageInit,
+          id: 0,
+          origin: window.location.origin,
+          data: { reconnect: true }
+        });
+      }
+    } catch (e) {
+      // the extension was removed, disabled or reloaded
+      this.isAlive = false;
+      this.notifyUnavailable();
+    }
+  }
+
+  notifyUnavailable(): void {
+    window.postMessage(
+      {
+        action: InPageMessage.LoginState,
+        id: 0,
+        data: { isUnlocked: false }
+      },
+      '*'
+    );
+    window.postMessage(
+      {
+        action: InPageMessage.AddressState,
+        id: 0,
+        data: { address: '' }
+      },
+      '*'
+    );
   }
 
   assignEventHandlers(): void {
     window.addEventListener('message', async (event: MessageEvent) => {
       if (event.origin === window.location.origin && event.data.action) {
-        if (!this.isAlive) {
-          this.connectPort();
-        }
-
         try {
+          if (!this.isAlive) {
+            this.reconnect(true);
+          }
+          if (
+            this.getRequestType(event.data.action) ===
+            ContentScriptMessage.InPageInit
+          ) {
+            this.hasInit = true;
+          }
           this.port.postMessage({
             type: this.getRequestType(event.data.action),
             id: event.data.id,
@@ -74,6 +117,11 @@ class ContentScript {
             '*'
           );
         }
+      }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.hasInit && !this.isAlive) {
+        this.reconnect(false);
       }
     });
     document.addEventListener('DOMContentLoaded', () => {

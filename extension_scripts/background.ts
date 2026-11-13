@@ -68,10 +68,21 @@ class Background {
   }[] = [];
   private approvedOrigins: string[] = [];
 
+  // The browser stops the service worker after about 30 seconds without events,
+  // which wipes everything held in memory. While the wallet is unlocked the state
+  // is kept in chrome.storage.session (memory only, cleared when the browser
+  // closes, not readable from content scripts) and restored on startup. `ready`
+  // resolves when that is done; every message handler waits for it.
+  private static readonly AUTO_LOCK_MS = 10 * 60 * 1000;
+  private static readonly AUTO_LOCK_ALARM = 'mpurse.autolock';
+  private lockAt = 0;
+  private ready: Promise<void>;
+
   constructor() {
     this.resetPreferences();
     this.resetKeyring();
 
+    this.ready = this.restoreSession();
     this.assignEventHandlers();
   }
 
@@ -97,8 +108,10 @@ class Background {
   assignEventHandlers(): void {
     chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
       if (port.name === ContentScriptMessage.PortName) {
-        port.onMessage.addListener(
-          (message: any, connectedPort: chrome.runtime.Port) => {
+        const onPortMessage = (
+          message: any,
+          connectedPort: chrome.runtime.Port
+        ): void => {
             switch (message.type) {
               case ContentScriptMessage.InPageInit:
                 connectedPort.onDisconnect.addListener(
@@ -119,6 +132,10 @@ class Background {
                 });
 
                 this.executeRequest(connectedPort, message);
+                if (message.data && message.data.reconnect) {
+                  // the content script reconnected after the service worker stopped
+                  this.sendStateToPort(connectedPort, message.origin);
+                }
                 break;
 
               case ContentScriptMessage.Address:
@@ -157,12 +174,24 @@ class Background {
                 this.executeRequest(connectedPort, message);
                 break;
             }
+        };
+
+        port.onMessage.addListener(
+          (message: any, connectedPort: chrome.runtime.Port) => {
+            this.ready.then(() => {
+              this.checkAutoLock();
+              onPortMessage(message, connectedPort);
+            });
           }
         );
       }
     });
 
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    const onExtensionMessage = (
+      message: any,
+      sender: chrome.runtime.MessageSender,
+      sendResponse: (response?: any) => void
+    ): void => {
       switch (message.type) {
         case ExtensionMessage.IsUnlocked:
           this.handleRequest<boolean>(sendResponse, () => {
@@ -418,9 +447,26 @@ class Background {
         default:
           sendResponse({ success: false, error: 'Unknown message type' });
       }
+    };
 
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      this.ready.then(() => {
+        // Messages from the extension's own pages are user activity.
+        this.checkAutoLock();
+        this.touch();
+        onExtensionMessage(message, sender, sendResponse);
+      });
       return true;
     });
+
+    const alarms = this.getAlarms();
+    if (alarms) {
+      alarms.onAlarm.addListener((alarm: { name: string }) => {
+        if (alarm.name === Background.AUTO_LOCK_ALARM) {
+          this.ready.then(() => this.checkAutoLock());
+        }
+      });
+    }
   }
 
   setBadgeText(shouldDelete: boolean): void {
@@ -688,6 +734,7 @@ class Background {
   approveOrigin(origin: string, id: number): boolean {
     if (!this.isApprovedOrigin(origin)) {
       this.approvedOrigins.push(origin);
+      this.persistSession();
       this.executePendingRequests();
     }
     const targetIndex = this.requests.findIndex(
@@ -715,9 +762,130 @@ class Background {
     }
   }
 
+  private getSessionStorage(): any {
+    // chrome.storage.session is missing from the bundled type definitions.
+    const storage: any = chrome.storage;
+    return storage && storage.session ? storage.session : null;
+  }
+
+  private getAlarms(): any {
+    // Optional: without the "alarms" permission the lock is still enforced on
+    // the next access, it is just not applied in the background.
+    const c: any = chrome;
+    return c.alarms ? c.alarms : null;
+  }
+
+  private persistSession(): void {
+    const storage = this.getSessionStorage();
+    if (!storage) {
+      return;
+    }
+    if (this.isUnlocked && this.password !== '') {
+      storage.set({
+        session: {
+          password: this.password,
+          approvedOrigins: this.approvedOrigins,
+          lockAt: this.lockAt
+        }
+      });
+    } else {
+      storage.remove('session');
+    }
+  }
+
+  private restoreSession(): Promise<void> {
+    const storage = this.getSessionStorage();
+    if (!storage) {
+      return Promise.resolve();
+    }
+    return new Promise<void>(resolve => {
+      storage.get('session', (items: any) => {
+        const s = items && items.session;
+        if (!s) {
+          resolve();
+          return;
+        }
+        if (
+          typeof s.password !== 'string' ||
+          s.password === '' ||
+          typeof s.lockAt !== 'number' ||
+          Date.now() >= s.lockAt
+        ) {
+          storage.remove('session');
+          resolve();
+          return;
+        }
+        this.approvedOrigins = Array.isArray(s.approvedOrigins)
+          ? s.approvedOrigins
+          : [];
+        this.unlock(s.password)
+          .then(() => {
+            // keep the original deadline: a restart is not user activity
+            this.lockAt = s.lockAt;
+            this.persistSession();
+            this.scheduleAutoLock();
+            resolve();
+          })
+          .catch(() => {
+            this.approvedOrigins = [];
+            this.persistSession();
+            resolve();
+          });
+      });
+    });
+  }
+
+  // Extends the auto-lock deadline. Called for user activity only.
+  private touch(): void {
+    if (!this.isUnlocked) {
+      return;
+    }
+    this.lockAt = Date.now() + Background.AUTO_LOCK_MS;
+    this.persistSession();
+    this.scheduleAutoLock();
+  }
+
+  private checkAutoLock(): void {
+    if (this.isUnlocked && Date.now() >= this.lockAt) {
+      this.lock();
+    }
+  }
+
+  private scheduleAutoLock(): void {
+    const alarms = this.getAlarms();
+    if (alarms && this.isUnlocked) {
+      alarms.create(Background.AUTO_LOCK_ALARM, { when: this.lockAt });
+    }
+  }
+
+  private clearAutoLockAlarm(): void {
+    const alarms = this.getAlarms();
+    if (alarms) {
+      alarms.clear(Background.AUTO_LOCK_ALARM);
+    }
+  }
+
+  private sendStateToPort(port: chrome.runtime.Port, origin: string): void {
+    port.postMessage({
+      type: ContentScriptMessage.LoginState,
+      id: 0,
+      data: { isUnlocked: this.isUnlocked }
+    });
+    if (this.isApprovedOrigin(origin)) {
+      port.postMessage({
+        type: ContentScriptMessage.AddressState,
+        id: 0,
+        data: { address: this.preferences.selectedAddress }
+      });
+    }
+  }
+
   private resetPassword(): void {
     this.isUnlocked = false;
     this.password = '';
+    this.lockAt = 0;
+    this.persistSession();
+    this.clearAutoLockAlarm();
     this.broadcastUpdate(ContentScriptMessage.LoginState, {
       isUnlocked: this.isUnlocked
     });
@@ -752,6 +920,7 @@ class Background {
 
   private resetApprovedOrigins(): void {
     this.approvedOrigins = [];
+    this.persistSession();
   }
 
   unlock(pw: string): Promise<void> {
@@ -795,6 +964,7 @@ class Background {
               key.privatekeys,
               null
             );
+            this.touch();
             resolve();
           } else {
             this.resetPassword();
@@ -968,6 +1138,7 @@ class Background {
   ): Promise<void> {
     if (this.password !== '') {
       this.isUnlocked = true;
+      this.touch();
     }
     this.createKeyring(passphrase, seedVersion, basePath, 1, [], baseName);
 
