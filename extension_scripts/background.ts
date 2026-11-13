@@ -505,7 +505,7 @@ class Background {
     if (!this.isUnlocked) {
       this.resetPreferences();
       this.resetKeyring();
-      Promise.reject('Not logged in');
+      return Promise.reject('Not logged in');
     } else {
       const hex = await this.keyring.signTransaction(
         tx,
