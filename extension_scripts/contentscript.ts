@@ -1,6 +1,5 @@
 import { ContentScriptMessage } from './enum/contentScriptMessage';
 import { InPageMessage } from './enum/inPageMessage';
-import { BitcoreUtil } from './util.bitcore';
 
 class ContentScript {
   private isAlive = false;
@@ -50,23 +49,6 @@ class ContentScript {
   }
 
   assignEventHandlers(): void {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      switch (message.type) {
-        case ContentScriptMessage.GenerateRandomMnemonic:
-          sendResponse(
-            this.generateRandomMnemonic(
-              message.seedVersion,
-              message.seedLanguage
-            )
-          );
-          break;
-        case ContentScriptMessage.SignMessage:
-          sendResponse(this.signMessage(message.message, message.hex));
-          break;
-      }
-      return true;
-    });
-
     window.addEventListener('message', async (event: MessageEvent) => {
       if (event.origin === window.location.origin && event.data.action) {
         if (!this.isAlive) {
@@ -112,14 +94,6 @@ class ContentScript {
     } catch (e) {
       console.error('Script injection failed', e);
     }
-  }
-
-  generateRandomMnemonic(seedVersion: string, seedLanguage: string): string {
-    return BitcoreUtil.generateRandomMnemonic(seedVersion, seedLanguage);
-  }
-
-  signMessage(message: string, hex: string): string {
-    return BitcoreUtil.signMessage(message, hex);
   }
 
   getRequestType(action: InPageMessage): ContentScriptMessage {

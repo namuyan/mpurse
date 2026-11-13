@@ -1,5 +1,6 @@
 import { ContentScriptMessage } from './enum/contentScriptMessage';
 
+import { BitcoreUtil } from './util.bitcore';
 import { EncryptUtil } from './util.encrypt';
 import { MpchainUtil } from './util.mpchain';
 import { Hdkey, Keyring } from './keyring';
@@ -91,34 +92,6 @@ class Background {
         error: e instanceof Error ? e.message : String(e)
       });
     }
-  }
-
-  sendMessageToActiveTab<T>(
-    messageType: ContentScriptMessage,
-    messageData: Record<string, any>,
-    sendResponse: (response: any) => void
-  ): void {
-    chrome.tabs.query({ active: true, windowType: 'normal' }, tabs => {
-      chrome.windows.getLastFocused({ windowTypes: ['normal'] }, window => {
-        if (window.id) {
-          chrome.tabs.query({ active: true, windowId: window.id }, tabs => {
-            if (tabs.length > 0) {
-              chrome.tabs.sendMessage(
-                tabs[tabs.length - 1].id,
-                { type: messageType, ...messageData },
-                contentResponse => {
-                  this.handleRequest(sendResponse, () => contentResponse as T);
-                }
-              );
-            } else {
-              sendResponse({ success: false, error: 'No active tab found' });
-            }
-          });
-        } else {
-          sendResponse({ success: false, error: 'No active tab found' });
-        }
-      });
-    });
   }
 
   assignEventHandlers(): void {
@@ -303,15 +276,9 @@ class Background {
           break;
 
         case ExtensionMessage.SignMessage:
-          this.sendMessageToActiveTab<string>(
-            ContentScriptMessage.SignMessage,
-            {
-              message: message.message,
-              hex: this.keyring.getAccount(this.preferences.selectedAddress)
-                .privatekey
-            },
-            sendResponse
-          );
+          this.handleRequest<string>(sendResponse, () => {
+            return this.signMessage(message.message);
+          });
           break;
 
         case ExtensionMessage.SendRawTransaction:
@@ -434,14 +401,12 @@ class Background {
           break;
 
         case ExtensionMessage.GenerateRandomMnemonic:
-          this.sendMessageToActiveTab<string>(
-            ContentScriptMessage.GenerateRandomMnemonic,
-            {
-              seedVersion: message.seedVersion,
-              seedLanguage: message.seedLanguage
-            },
-            sendResponse
-          );
+          this.handleRequest<string>(sendResponse, () => {
+            return BitcoreUtil.generateRandomMnemonic(
+              message.seedVersion,
+              message.seedLanguage
+            );
+          });
           break;
 
         case ExtensionMessage.DecodeBase58:
@@ -506,6 +471,14 @@ class Background {
 
   signRawTransaction(tx: string): Promise<string> {
     return this.keyring.signTransaction(tx, this.preferences.selectedAddress);
+  }
+
+  signMessage(message: string): string {
+    const account = this.keyring.getAccount(this.preferences.selectedAddress);
+    if (!account) {
+      throw new Error('Not logged in');
+    }
+    return BitcoreUtil.signMessage(message, account.privatekey);
   }
 
   async sendRawTransaction(tx: string): Promise<any> {

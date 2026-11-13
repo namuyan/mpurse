@@ -4,6 +4,13 @@ import * as BitCoreMnemonic from 'bitcore-mnemonic';
 import * as BitCoreMessage from 'bitcore-message';
 import { MpchainUtil } from './util.mpchain';
 
+// A service worker has no `window`, but bitcore-lib and the Electrum 1 mnemonic
+// generator read `window.crypto` for random bytes. `self.crypto` is available
+// there, so expose it under the name they expect.
+if (typeof window === 'undefined' && typeof self !== 'undefined') {
+  (self as any).window = self;
+}
+
 export class BitcoreUtil {
   static NETWORK: any;
 
