@@ -148,11 +148,17 @@ export class Keyring {
 
   signTransaction(tx: string, address: string): Promise<string> {
     const account = this.accounts.find(value => value.address === address);
+    if (!account) {
+      return Promise.reject('Account Not Found');
+    }
     return BitcoreUtil.signTransaction(tx, account.privatekey);
   }
 
   signMessage(message: string, address: string): string {
     const account = this.accounts.find(value => value.address === address);
+    if (!account) {
+      throw new Error('Account Not Found');
+    }
     return BitcoreUtil.signMessage(message, account.privatekey);
   }
 }

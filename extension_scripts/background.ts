@@ -516,11 +516,16 @@ class Background {
   }
 
   signRawTransaction(tx: string): Promise<string> {
+    if (!this.isUnlocked) {
+      return Promise.reject('Not logged in');
+    }
     return this.keyring.signTransaction(tx, this.preferences.selectedAddress);
   }
 
   signMessage(message: string): string {
-    const account = this.keyring.getAccount(this.preferences.selectedAddress);
+    const account = this.isUnlocked
+      ? this.keyring.getAccount(this.preferences.selectedAddress)
+      : undefined;
     if (!account) {
       throw new Error('Not logged in');
     }
@@ -528,6 +533,9 @@ class Background {
   }
 
   async sendRawTransaction(tx: string): Promise<any> {
+    if (!this.isUnlocked) {
+      return Promise.reject('Not logged in');
+    }
     const hex = await this.keyring.signTransaction(
       tx,
       this.preferences.selectedAddress

@@ -80,3 +80,17 @@ test('keyring: Electrum1 wallets restore with their own path', () => {
     e.accounts.map(a => a[0])
   );
 });
+
+test('keyring: signing with an unknown address fails clearly', async () => {
+  const k = restored();
+  await assert.rejects(k.signTransaction('00', 'MUnknownAddress'), e => e === 'Account Not Found');
+  assert.throws(() => k.signMessage('hello', 'MUnknownAddress'), /Account Not Found/);
+  // an empty keyring is what the background has while locked
+  await assert.rejects(new Keyring().signTransaction('00', ''), e => e === 'Account Not Found');
+});
+
+test('keyring: signMessage signs with the account key', () => {
+  const { BitcoreUtil } = load('util.bitcore');
+  const sig = restored().signMessage('hello', w.accounts[1][0]);
+  assert.strictEqual(BitcoreUtil.verify(w.accounts[1][0], 'hello', sig), true);
+});
