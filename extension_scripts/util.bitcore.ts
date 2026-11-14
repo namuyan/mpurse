@@ -82,7 +82,8 @@ export class BitcoreUtil {
     BitCore.Networks.testnet = BitCore.Networks.add(this.testnet);
     BitCore.Networks.livenet = BitCore.Networks.mainnet;
 
-    this.NETWORK = BitCore.Networks.livenet;
+    // Testnet build: keys and addresses use Monacoin testnet
+    this.NETWORK = BitCore.Networks.testnet;
   }
 
   static generateRandomMnemonic(

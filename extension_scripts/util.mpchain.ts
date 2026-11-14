@@ -30,8 +30,8 @@ const SATOSHI = new Decimal(100000000);
 const ZERO = '0.00000000';
 
 export class MpchainUtil {
-  // counterblock JSON-RPC endpoint (Monaparty mainnet)
-  static API_URL = 'https://monapa.electrum-mona.org/_api';
+  // counterblock JSON-RPC endpoint (Monaparty testnet)
+  static API_URL = 'https://testnet-monapa.electrum-mona.org/_t_api';
 
   private static httpPost(params: string): Promise<any> {
     return fetch(this.API_URL, {

@@ -7,6 +7,22 @@ const v = require('./vectors');
 
 const { BitcoreUtil } = load('util.bitcore');
 
+// This build uses Monacoin testnet. The fixed vectors are mainnet; key
+// derivation does not depend on the network, so the vector tests run with
+// the mainnet network and the testnet setting is checked separately below.
+const SHIPPED_NETWORK = BitcoreUtil.NETWORK;
+BitcoreUtil.NETWORK = require('bitcore-lib').Networks.mainnet;
+
+function withShippedNetwork(fn) {
+  const old = BitcoreUtil.NETWORK;
+  BitcoreUtil.NETWORK = SHIPPED_NETWORK;
+  try {
+    return fn();
+  } finally {
+    BitcoreUtil.NETWORK = old;
+  }
+}
+
 function mpurseAddress(mnemonic, seedVersion, basePath, index) {
   const hd = BitcoreUtil.getHDPrivateKey(mnemonic, seedVersion);
   return BitcoreUtil.getAddress(BitcoreUtil.getPrivateKey(hd, basePath, index));
@@ -28,9 +44,18 @@ function withWindowCrypto(fn) {
   }
 }
 
-test('bitcore: the network is Monacoin mainnet', () => {
-  assert.strictEqual(BitcoreUtil.NETWORK.pubkeyhash, 50);
-  assert.strictEqual(BitcoreUtil.NETWORK.privatekey, 176);
+test('bitcore: the network is Monacoin testnet', () => {
+  assert.strictEqual(SHIPPED_NETWORK.pubkeyhash, 111);
+  assert.strictEqual(SHIPPED_NETWORK.privatekey, 239);
+});
+
+test('bitcore: testnet address and WIF match the reference', () => {
+  const priv = Buffer.from(v.imported.hex, 'hex');
+  withShippedNetwork(() => {
+    const key = BitcoreUtil.getPrivateKeyFromHex(v.imported.hex);
+    assert.strictEqual(BitcoreUtil.getAddress(key), r.address(priv, 'testnet'));
+    assert.strictEqual(BitcoreUtil.hex2WIF(v.imported.hex), r.wif(priv, 'testnet'));
+  });
 });
 
 for (const w of v.wallets) {

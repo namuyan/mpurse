@@ -5,6 +5,9 @@ const v = require('./vectors');
 
 const { Keyring } = load('keyring');
 
+// The fixed vectors are mainnet; this build uses testnet (see bitcore.test.js).
+load('util.bitcore').BitcoreUtil.NETWORK = require('bitcore-lib').Networks.mainnet;
+
 const w = v.wallets[0];
 
 function restored() {

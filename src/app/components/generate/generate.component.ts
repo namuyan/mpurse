@@ -109,7 +109,7 @@ export class GenerateComponent implements OnInit {
         this.basePathControl.setValue("m/0'/0/");
         break;
       case 'Bip39':
-        this.basePathControl.setValue("m/44'/22'/0'/0/");
+        this.basePathControl.setValue("m/44'/1'/0'/0/");
         break;
     }
 

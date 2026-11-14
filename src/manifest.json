@@ -1,5 +1,5 @@
 {
-  "name": "Mpurse",
+  "name": "Mpurse Testnet",
   "manifest_version": 3,
   "description": "Extension for Monaparty",
   "version": "0.6.0",
@@ -20,7 +20,7 @@
     "service_worker": "extension_scripts/background.js"
   },
   "action": {
-    "default_title": "Mpurse",
+    "default_title": "Mpurse Testnet",
     "default_icon": {
       "19": "assets/mpurse19.png"
     },
