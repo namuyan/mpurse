@@ -71,7 +71,7 @@ export class DetailsComponent implements OnInit {
 
   viewMpchain(): void {
     this.backgroundService.viewNewTab(
-      'https://mpchain.info/address/' + this.address
+      'https://testnet.mpchain.info/address/' + this.address
     );
   }
 

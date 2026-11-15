@@ -233,13 +233,13 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   viewMpchain(): void {
     this.backgroundService.viewNewTab(
-      'https://mpchain.info/address/' + this.accountSummary.address
+      'https://testnet.mpchain.info/address/' + this.accountSummary.address
     );
   }
 
   viewInsight(): void {
     this.backgroundService.viewNewTab(
-      'https://mona.insight.monaco-ex.org/insight/address/' +
+      'https://esplora.electrum-mona.org/testnet/address/' +
         this.accountSummary.address
     );
   }
